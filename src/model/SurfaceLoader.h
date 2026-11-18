@@ -5,5 +5,5 @@
 #include <vector>
 namespace model {
 bool loadSurfaces(const QString &path, std::vector<BezierSurface> &out,
-                  QString *Error);
+                  QString *error);
 }

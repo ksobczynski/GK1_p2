@@ -23,6 +23,10 @@ add_executable(p2
     src/model/SurfaceLoader.cpp
     src/model/Scene.h
     src/model/Scene.cpp
+    src/ui/MainWindow.h
+    src/ui/MainWindow.cpp
+    src/ui/CanvasWidget.h
+    src/ui/CanvasWidget.cpp
 )
 
 target_link_libraries(p2 PRIVATE Qt6::Widgets)

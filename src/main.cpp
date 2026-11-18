@@ -1,7 +1,12 @@
+#include "model/Scene.h"
+#include "ui/MainWindow.h"
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QMessageBox>
 #include <QWidget>
+#include <cstddef>
+#include <iostream>
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
@@ -14,7 +19,14 @@ int main(int argc, char *argv[]) {
   parser.process(app);
   QString path = parser.value(fileOpt);
 
-  QWidget w;
-  w.show();
+  model::Scene scene{};
+  QString e;
+  if (!scene.load(path, &e)) {
+    QMessageBox::critical(nullptr, "Błąd", e);
+    return 1;
+  }
+
+  MainWindow window(scene);
+  window.show();
   return app.exec();
 }
