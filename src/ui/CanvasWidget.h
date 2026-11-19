@@ -1,7 +1,7 @@
-
 #pragma once
 
 #include "model/Scene.h"
+#include <QMatrix4x4>
 #include <QWidget>
 
 class CanvasWidget : public QWidget {
@@ -21,9 +21,19 @@ public:
 
 protected:
   void paintEvent(QPaintEvent *event) override;
+  void mousePressEvent(QMouseEvent *event) override;
+  void mouseMoveEvent(QMouseEvent *event) override;
+  void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
+  void drawWireframe(QPainter &painter) const;
+  void drawControlPolygon(QPainter &painter) const;
+  QPointF toScreen(const QVector3D &rotated) const;
+
   model::Scene &scene_;
+  float scale_ = 1.0f;
+  QPointF lastMousePos_;
+  bool dragging_ = false;
   bool showControlPolygon_ = true;
   bool showWireframe_ = true;
 };
