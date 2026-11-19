@@ -1,7 +1,10 @@
 #pragma once
+#include "model/LightCurve.h"
 #include "model/Scene.h"
 #include "render/FrameBuffer.h"
+#include "render/Lighting.h"
 #include <QMatrix4x4>
+#include <QTimer>
 #include <QWidget>
 
 class CanvasWidget : public QWidget {
@@ -22,6 +25,14 @@ public:
   void setShowFilled(bool on) {
     showFilled_ = on;
     update();
+  }
+  render::Lighting &lighting() { return lighting_; }
+  model::LightCurve &lightCurve() { return curve_; }
+  void setAnimating(bool on) {
+    if (on)
+      timer_.start();
+    else
+      timer_.stop();
   }
 
 protected:
@@ -44,4 +55,12 @@ private:
   bool dragging_ = false;
   bool showControlPolygon_ = true;
   bool showWireframe_ = true;
+  render::Lighting lighting_;
+  void drawLightCurve(QPainter &painter) const;
+  QPointF toScreen(const QPointF &p) const { return p * scale_; }
+  QPointF toScene(const QPointF &widgetPos) const;
+  model::LightCurve curve_;
+  float lightS_ = 0;
+  QTimer timer_;
+  int dragPoint_ = -1;
 };
