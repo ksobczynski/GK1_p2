@@ -44,19 +44,24 @@ QWidget *MainWindow::createControlPanel() {
 
   auto *showBox = new QGroupBox("Wyświetlanie", panel);
   auto *showLayout = new QVBoxLayout(showBox);
+  auto *fillCheck = new QCheckBox("Wypełnione trójkąty", showBox);
 
   auto *polygonCheck = new QCheckBox("Wielobok Béziera", showBox);
   auto *wireCheck = new QCheckBox("Siatka trójkątów", showBox);
   polygonCheck->setChecked(canvas_->showControlPolygon());
   wireCheck->setChecked(canvas_->showWireframe());
+  fillCheck->setChecked(canvas_->showFilled());
 
   connect(polygonCheck, &QCheckBox::toggled, canvas_,
           &CanvasWidget::setShowControlPolygon);
   connect(wireCheck, &QCheckBox::toggled, canvas_,
           &CanvasWidget::setShowWireframe);
+  connect(fillCheck, &QCheckBox::toggled, canvas_,
+          &CanvasWidget::setShowFilled);
 
   showLayout->addWidget(polygonCheck);
   showLayout->addWidget(wireCheck);
+  showLayout->addWidget(fillCheck);
 
   layout->addWidget(triBox);
   layout->addWidget(showBox);

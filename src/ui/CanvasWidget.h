@@ -1,6 +1,6 @@
 #pragma once
-
 #include "model/Scene.h"
+#include "render/FrameBuffer.h"
 #include <QMatrix4x4>
 #include <QWidget>
 
@@ -18,6 +18,11 @@ public:
     showWireframe_ = on;
     update();
   }
+  bool showFilled() const { return showFilled_; }
+  void setShowFilled(bool on) {
+    showFilled_ = on;
+    update();
+  }
 
 protected:
   void paintEvent(QPaintEvent *event) override;
@@ -26,6 +31,9 @@ protected:
   void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
+  void drawFilled();
+  render::FrameBuffer fb_;
+  bool showFilled_ = true;
   void drawWireframe(QPainter &painter) const;
   void drawControlPolygon(QPainter &painter) const;
   QPointF toScreen(const QVector3D &rotated) const;

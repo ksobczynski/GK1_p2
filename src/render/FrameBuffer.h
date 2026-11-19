@@ -1,12 +1,17 @@
 #pragma once
 
 #include <QImage>
+#include <algorithm>
 #include <limits>
 #include <vector>
 
 namespace render {
 class FrameBuffer {
 public:
+  void clear(QRgb bg) {
+    image_.fill(bg);
+    std::fill(depth_.begin(), depth_.end(), kFar);
+  }
   void resize(int w, int h) {
     if (w == width() && h == height())
       return;

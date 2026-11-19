@@ -1,5 +1,6 @@
 #include "CanvasWidget.h"
 #include "model/Triangle.h"
+#include "render/Rasterizer.h"
 #include <QMouseEvent>
 #include <QPainter>
 #include <algorithm>
@@ -20,10 +21,13 @@ void CanvasWidget::paintEvent(QPaintEvent *) {
   QPainter painter(this);
   painter.fillRect(rect(), Qt::white);
   painter.setRenderHint(QPainter::Antialiasing);
-
+  scale_ = 0.48f * std::min(width(), height()) / kSceneRadius;
+  if (showFilled_) {
+    drawFilled();
+    painter.drawImage(0, 0, fb_.image());
+  }
   painter.translate(width() / 2.0, height() / 2.0);
   painter.scale(1, -1);
-  scale_ = 0.48f * std::min(width(), height()) / kSceneRadius;
 
   if (showWireframe_)
     drawWireframe(painter);
@@ -96,4 +100,25 @@ void CanvasWidget::mouseReleaseEvent(QMouseEvent *event) {
     dragging_ = false;
     setCursor(Qt::OpenHandCursor);
   }
+}
+
+void CanvasWidget::drawFilled() {
+  fb_.resize(width(), height());
+  fb_.clear(qRgb(255, 255, 255));
+  const float cx = width() / 2.0f, cy = height() / 2.0f;
+
+  for (const model::Mesh &mesh : scene_.meshes())
+    for (const model::Triangle &t : mesh.tris) {
+      render::ScreenVertex sv[3];
+      for (int i = 0; i < 3; i++) {
+        const QVector3D &p = t.v[i].Pr;
+        sv[i] = {cx + p.x() * scale_, cy - p.y() * scale_, p.z()};
+      }
+      render::fillTriangle(fb_, sv, [&](float b0, float b1, float b2) {
+        QVector3D n =
+            (b0 * t.v[0].Nr + b1 * t.v[1].Nr + b2 * t.v[2].Nr).normalized();
+        int g = int(255 * std::max(0.0f, n.z()));
+        return qRgb(g, g, g);
+      });
+    }
 }
