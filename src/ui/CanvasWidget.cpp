@@ -12,6 +12,8 @@ constexpr float kDegreesPerPixel = 0.5f;
 CanvasWidget::CanvasWidget(model::Scene &scene, QWidget *parent)
     : QWidget(parent), scene_(scene) {
   setCursor(Qt::OpenHandCursor);
+  render::loadImage(lighting_.texture, "data/texture.png");
+  render::loadImage(lighting_.normalMap, "data/normalmap.png");
 
   timer_.setInterval(16);
   connect(&timer_, &QTimer::timeout, this, [this] {
@@ -143,9 +145,28 @@ void CanvasWidget::drawFilled() {
       }
       render::fillTriangle(fb_, sv, [&](float b0, float b1, float b2) {
         const QVector3D P = b0 * t.v[0].Pr + b1 * t.v[1].Pr + b2 * t.v[2].Pr;
-        const QVector3D N =
+        QVector3D N =
             (b0 * t.v[0].Nr + b1 * t.v[1].Nr + b2 * t.v[2].Nr).normalized();
-        return render::shadePhong(lighting_, P, N, lighting_.objectColor);
+        const float u = b0 * t.v[0].u + b1 * t.v[1].u + b2 * t.v[2].u;
+        const float v = b0 * t.v[0].v + b1 * t.v[1].v + b2 * t.v[2].v;
+
+        if (lighting_.useNormalMap && !lighting_.normalMap.isNull()) {
+          const QVector3D Pu =
+              (b0 * t.v[0].Pur + b1 * t.v[1].Pur + b2 * t.v[2].Pur)
+                  .normalized();
+          const QVector3D Pv =
+              (b0 * t.v[0].Pvr + b1 * t.v[1].Pvr + b2 * t.v[2].Pvr)
+                  .normalized();
+          const QVector3D Nt =
+              2 * render::textureColor(lighting_.normalMap, u, v) -
+              QVector3D(1, 1, 1);
+          N = (Pu * Nt.x() + Pv * Nt.y() + N * Nt.z()).normalized();
+        }
+
+        QVector3D IO = lighting_.objectColor;
+        if (lighting_.useTexture && !lighting_.texture.isNull())
+          IO = render::textureColor(lighting_.texture, u, v);
+        return render::shadePhong(lighting_, P, N, IO);
       });
     }
 }

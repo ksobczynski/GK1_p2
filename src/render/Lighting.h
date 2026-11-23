@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QColor>
+#include <QImage>
 #include <QVector3D>
 #include <algorithm>
 #include <cmath>
@@ -12,7 +13,27 @@ struct Lighting {
   QVector3D objectColor{0.9f, 0.6f, 0.2f};
   float kd = 0.6f, ks = 0.4f;
   float m = 20;
+  QImage texture;
+  bool useTexture = false;
+  QImage normalMap;
+  bool useNormalMap = false;
 };
+
+inline bool loadImage(QImage &dst, const QString &path) {
+  QImage img(path);
+  if (img.isNull())
+    return false;
+  dst = img.convertToFormat(QImage::Format_RGB32);
+  return true;
+}
+
+inline QVector3D textureColor(const QImage &tex, float u, float v) {
+  const int x = int(std::clamp(u, 0.0f, 1.0f) * (tex.width() - 1) + 0.5f);
+  const int y = int(std::clamp(v, 0.0f, 1.0f) * (tex.height() - 1) + 0.5f);
+  const QRgb c = reinterpret_cast<const QRgb *>(tex.constScanLine(y))[x];
+  return QVector3D(qRed(c), qGreen(c), qBlue(c)) / 255.0f;
+}
+
 inline QRgb shadePhong(const Lighting &l, const QVector3D &P,
                        const QVector3D &N, const QVector3D &IO) {
   const QVector3D V(0, 0, 1);

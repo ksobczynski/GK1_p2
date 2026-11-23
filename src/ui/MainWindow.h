@@ -11,6 +11,7 @@ public:
 
 private:
   QWidget *createControlPanel();
+  void showHelp();
   model::Scene &scene_;
   CanvasWidget *canvas_;
 };
