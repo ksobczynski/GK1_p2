@@ -1,22 +1,33 @@
 #pragma once
 
-#include <QColor>
 #include <QImage>
 #include <QVector3D>
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace render {
+enum class LightType { Directional, Point, Spot };
+enum class SurfaceMap { None, Normal, Height };
+
 struct Lighting {
-  QVector3D lightPos{0.5f, 0.5f, 2.0f};
+  std::vector<QVector3D> lightPos{{0.5f, 0.5f, 2.0f}};
+  int lightCount = 1;
+  LightType type = LightType::Point;
+  float spotM = 10;
   QVector3D lightColor{1, 1, 1};
-  QVector3D objectColor{0.9f, 0.6f, 0.2f};
   float kd = 0.6f, ks = 0.4f;
   float m = 20;
-  QImage texture;
-  bool useTexture = false;
   QImage normalMap;
-  bool useNormalMap = false;
+  QImage heightMap;
+  SurfaceMap surfaceMap = SurfaceMap::None;
+  float K = 10;
+};
+
+struct Material {
+  QVector3D color{0.9f, 0.6f, 0.2f};
+  bool useTexture = false;
+  QImage texture;
 };
 
 inline bool loadImage(QImage &dst, const QString &path) {
@@ -34,17 +45,37 @@ inline QVector3D textureColor(const QImage &tex, float u, float v) {
   return QVector3D(qRed(c), qGreen(c), qBlue(c)) / 255.0f;
 }
 
+inline float heightAt(const QImage &img, int x, int y) {
+  x = std::clamp(x, 0, img.width() - 1);
+  y = std::clamp(y, 0, img.height() - 1);
+  return qGray(reinterpret_cast<const QRgb *>(img.constScanLine(y))[x]) /
+         255.0f;
+}
+
 inline QRgb shadePhong(const Lighting &l, const QVector3D &P,
                        const QVector3D &N, const QVector3D &IO) {
   const QVector3D V(0, 0, 1);
-  const QVector3D L = (l.lightPos - P).normalized();
-  const float NL = QVector3D::dotProduct(N, L);
-  const QVector3D R = (2 * NL * N - L).normalized();
+  QVector3D I;
+  for (const QVector3D &lp : l.lightPos) {
+    const QVector3D L = l.type == LightType::Directional
+                            ? QVector3D(0, 0, 1)
+                            : (lp - P).normalized();
+    float spot = 1;
+    if (l.type == LightType::Spot)
+      spot = std::pow(
+          std::max(0.0f, QVector3D::dotProduct(-L, (-lp).normalized())),
+          l.spotM);
 
-  const float diff = std::max(0.0f, NL);
-  const float spec = std::pow(std::max(0.0f, QVector3D::dotProduct(V, R)), l.m);
+    const float NL = QVector3D::dotProduct(N, L);
+    const QVector3D R = (2 * NL * N - L).normalized();
+    const float diff = std::max(0.0f, NL);
+    const float spec =
+        std::pow(std::max(0.0f, QVector3D::dotProduct(V, R)), l.m);
+    I += spot * l.lightColor * IO * (l.kd * diff + l.ks * spec);
 
-  const QVector3D I = l.lightColor * IO * (l.kd * diff + l.ks * spec);
+    if (l.type == LightType::Directional)
+      break;
+  }
 
   auto to255 = [](float c) { return std::min(255, int(c * 255)); };
   return qRgb(to255(I.x()), to255(I.y()), to255(I.z()));

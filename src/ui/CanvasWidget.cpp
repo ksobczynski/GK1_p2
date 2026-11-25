@@ -12,8 +12,13 @@ constexpr float kDegreesPerPixel = 0.5f;
 CanvasWidget::CanvasWidget(model::Scene &scene, QWidget *parent)
     : QWidget(parent), scene_(scene) {
   setCursor(Qt::OpenHandCursor);
-  render::loadImage(lighting_.texture, "data/texture.png");
+  QImage tex;
+  render::loadImage(tex, "data/texture.png");
+  materials_.resize(scene_.meshes().size());
+  for (render::Material &m : materials_)
+    m.texture = tex;
   render::loadImage(lighting_.normalMap, "data/normalmap.png");
+  render::loadImage(lighting_.heightMap, "data/heightmap.png");
 
   timer_.setInterval(16);
   connect(&timer_, &QTimer::timeout, this, [this] {
@@ -33,8 +38,11 @@ void CanvasWidget::paintEvent(QPaintEvent *) {
   painter.fillRect(rect(), Qt::white);
   painter.setRenderHint(QPainter::Antialiasing);
   scale_ = 0.48f * std::min(width(), height()) / kSceneRadius;
-  const QPointF L = curve_.point(lightS_);
-  lighting_.lightPos = QVector3D(L.x(), L.y(), curve_.z);
+  lighting_.lightPos.clear();
+  for (int k = 0; k < lighting_.lightCount; k++) {
+    const QPointF L = curve_.point(lightS_ + float(k) / lighting_.lightCount);
+    lighting_.lightPos.emplace_back(L.x(), L.y(), curve_.z);
+  }
   if (showFilled_) {
     drawFilled();
     painter.drawImage(0, 0, fb_.image());
@@ -136,8 +144,10 @@ void CanvasWidget::drawFilled() {
   fb_.clear(qRgb(255, 255, 255));
   const float cx = width() / 2.0f, cy = height() / 2.0f;
 
-  for (const model::Mesh &mesh : scene_.meshes())
-    for (const model::Triangle &t : mesh.tris) {
+  const auto &meshes = scene_.meshes();
+  for (size_t i = 0; i < meshes.size(); i++) {
+    const render::Material &mat = materials_[i];
+    for (const model::Triangle &t : meshes[i].tris) {
       render::ScreenVertex sv[3];
       for (int i = 0; i < 3; i++) {
         const QVector3D &p = t.v[i].Pr;
@@ -150,25 +160,49 @@ void CanvasWidget::drawFilled() {
         const float u = b0 * t.v[0].u + b1 * t.v[1].u + b2 * t.v[2].u;
         const float v = b0 * t.v[0].v + b1 * t.v[1].v + b2 * t.v[2].v;
 
-        if (lighting_.useNormalMap && !lighting_.normalMap.isNull()) {
+        const render::SurfaceMap sm = lighting_.surfaceMap;
+        const bool useNM =
+            sm == render::SurfaceMap::Normal && !lighting_.normalMap.isNull();
+        const bool useHM =
+            sm == render::SurfaceMap::Height && !lighting_.heightMap.isNull();
+        if (useNM || useHM) {
           const QVector3D Pu =
               (b0 * t.v[0].Pur + b1 * t.v[1].Pur + b2 * t.v[2].Pur)
                   .normalized();
           const QVector3D Pv =
               (b0 * t.v[0].Pvr + b1 * t.v[1].Pvr + b2 * t.v[2].Pvr)
                   .normalized();
-          const QVector3D Nt =
-              2 * render::textureColor(lighting_.normalMap, u, v) -
-              QVector3D(1, 1, 1);
-          N = (Pu * Nt.x() + Pv * Nt.y() + N * Nt.z()).normalized();
+          if (useNM) {
+            const QVector3D Nt =
+                2 * render::textureColor(lighting_.normalMap, u, v) -
+                QVector3D(1, 1, 1);
+            N = (Pu * Nt.x() + Pv * Nt.y() + N * Nt.z()).normalized();
+          } else {
+            const QImage &H = lighting_.heightMap;
+            const int x =
+                int(std::clamp(u, 0.0f, 1.0f) * (H.width() - 1) + 0.5f);
+            const int y =
+                int(std::clamp(v, 0.0f, 1.0f) * (H.height() - 1) + 0.5f);
+            const float Hu =
+                (render::heightAt(H, x + 1, y) - render::heightAt(H, x - 1, y)) /
+                2;
+            const float Hv =
+                (render::heightAt(H, x, y + 1) - render::heightAt(H, x, y - 1)) /
+                2;
+            const QVector3D D =
+                lighting_.K * (Hu * QVector3D::crossProduct(N, Pv) -
+                               Hv * QVector3D::crossProduct(N, Pu));
+            N = (N + D).normalized();
+          }
         }
 
-        QVector3D IO = lighting_.objectColor;
-        if (lighting_.useTexture && !lighting_.texture.isNull())
-          IO = render::textureColor(lighting_.texture, u, v);
+        QVector3D IO = mat.color;
+        if (mat.useTexture && !mat.texture.isNull())
+          IO = render::textureColor(mat.texture, u, v);
         return render::shadePhong(lighting_, P, N, IO);
       });
     }
+  }
 }
 
 void CanvasWidget::drawLightCurve(QPainter &painter) const {
@@ -191,7 +225,8 @@ void CanvasWidget::drawLightCurve(QPainter &painter) const {
 
   painter.setPen(QPen(Qt::black, 1));
   painter.setBrush(Qt::yellow);
-  painter.drawEllipse(toScreen(curve_.point(lightS_)), 7, 7);
+  for (const QVector3D &p : lighting_.lightPos)
+    painter.drawEllipse(toScreen(p), 7, 7);
   painter.setBrush(Qt::NoBrush);
 }
 

@@ -1,5 +1,4 @@
 #include "Scene.h"
-#include "model/BezierSurface.h"
 #include "model/SurfaceLoader.h"
 #include <algorithm>
 

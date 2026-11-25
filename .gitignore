@@ -3,3 +3,5 @@ build/
 .cache/
 Wymagania.md
 Wymagania_opis.md
+data/heightmap.png
+data/normal2.png

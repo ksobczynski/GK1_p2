@@ -3,7 +3,6 @@
 #include "model/Scene.h"
 #include "render/FrameBuffer.h"
 #include "render/Lighting.h"
-#include <QMatrix4x4>
 #include <QTimer>
 #include <QWidget>
 
@@ -27,6 +26,7 @@ public:
     update();
   }
   render::Lighting &lighting() { return lighting_; }
+  std::vector<render::Material> &materials() { return materials_; }
   model::LightCurve &lightCurve() { return curve_; }
   void setAnimating(bool on) {
     if (on)
@@ -53,9 +53,10 @@ private:
   float scale_ = 1.0f;
   QPointF lastMousePos_;
   bool dragging_ = false;
-  bool showControlPolygon_ = true;
-  bool showWireframe_ = true;
+  bool showControlPolygon_ = false;
+  bool showWireframe_ = false;
   render::Lighting lighting_;
+  std::vector<render::Material> materials_;
   void drawLightCurve(QPainter &painter) const;
   QPointF toScreen(const QPointF &p) const { return p * scale_; }
   QPointF toScene(const QPointF &widgetPos) const;

@@ -1,6 +1,5 @@
 
 #include "SurfaceLoader.h"
-#include "model/BezierSurface.h"
 #include <QFile>
 #include <QStringList>
 #include <QTextStream>
