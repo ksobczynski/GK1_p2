@@ -36,4 +36,6 @@ add_executable(p2
 
 target_link_libraries(p2 PRIVATE Qt6::Widgets)
 
+target_compile_options(p2 PRIVATE $<$<CONFIG:Release>:-ffast-math -fno-finite-math-only>)
+
 target_include_directories(p2 PRIVATE src)
